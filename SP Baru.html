@@ -1,0 +1,1090 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Surat Pernyataan Elektronik - Kanim Bekasi</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght=0,300;0,400;0,500;0,600;0,700;1,400&display=swap');
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+        .signature-pad {
+            border: 2px dashed #cbd5e1;
+            border-radius: 0.75rem;
+            cursor: crosshair;
+            touch-action: none;
+        }
+        /* CSS Khusus Cetak Format Dokumen Negara */
+        #print-area {
+            display: none;
+            background-color: #ffffff;
+            color: #000000;
+            font-family: 'Times New Roman', Times, serif;
+            width: 100%;
+        }
+        @media print {
+            body {
+                background: #ffffff !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            #main-app {
+                display: none !important;
+            }
+            #print-area {
+                display: block !important;
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                visibility: visible;
+            }
+            #print-area * {
+                visibility: visible;
+            }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+
+    <!-- APLIKASI UTAMA (Akan disembunyikan saat cetak agar PDF tidak kosong) -->
+    <div id="main-app" class="flex flex-col min-h-screen">
+        <!-- Header Navigasi -->
+        <header class="bg-gradient-to-r from-blue-900 to-indigo-950 text-white shadow-md sticky top-0 z-50">
+            <div class="max-w-7xl mx-auto px-4 py-3.5 flex flex-wrap justify-between items-center gap-4">
+                <div class="flex items-center gap-3">
+                    <div class="bg-white p-1.5 rounded-lg shadow-inner">
+                        <svg class="w-8 h-8 text-blue-900" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 2L2 22h20L12 2zm0 3.99L19.53 19H4.47L12 5.99zM11 10v4h2v-4h-2zm0 6v2h2v-2h-2z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h1 class="text-base md:text-lg font-bold tracking-tight">KANTOR IMIGRASI KELAS I NON TPI BEKASI</h1>
+                        <p class="text-xs text-blue-200">Sistem Surat Pernyataan Mandiri Terintegrasi</p>
+                    </div>
+                </div>
+                
+                <!-- Pengalih Layar Peran -->
+                <div id="role-switcher-container" class="flex bg-blue-950/60 p-1.5 rounded-xl border border-blue-800/40">
+                    <button id="nav-btn-pemohon" onclick="window.switchMode('pemohon')" class="px-4 py-2 rounded-lg text-xs md:text-sm font-semibold transition-all duration-200 flex items-center gap-2 bg-blue-600 text-white shadow-sm">
+                        <i data-lucide="user"></i> Halaman Pemohon
+                    </button>
+                    <button id="nav-btn-petugas" onclick="window.switchMode('petugas')" class="px-4 py-2 rounded-lg text-xs md:text-sm font-semibold transition-all duration-200 flex items-center gap-2 text-blue-200 hover:text-white">
+                        <i data-lucide="shield-check"></i> Dashboard Petugas
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Banner Fallback Jaringan Offline -->
+        <div id="fallback-warning-banner" class="bg-gradient-to-r from-amber-500 to-orange-600 text-white text-xs md:text-sm px-4 py-2.5 flex flex-wrap justify-between items-center gap-2">
+            <div class="flex items-center gap-2">
+                <i data-lucide="alert-triangle" class="w-4 h-4 shrink-0"></i>
+                <span><strong>Mode Penyimpanan Lokal:</strong> Basis data cloud belum terhubung. Berkas Anda dicadangkan di penyimpanan browser sementara.</span>
+            </div>
+            <button onclick="window.openConfigModal()" class="bg-white/20 hover:bg-white/30 text-white font-bold px-3 py-1 rounded-lg text-xs transition-all flex items-center gap-1">
+                <i data-lucide="settings" class="w-3.5 h-3.5"></i> Hubungkan Firebase Anda
+            </button>
+        </div>
+
+        <!-- Main Content -->
+        <main class="max-w-7xl mx-auto p-4 md:p-6 w-full flex-grow">
+            <!-- SECTION 1: HALAMAN PEMOHON -->
+            <section id="section-pemohon" class="space-y-6">
+                <!-- Banner Pengisian -->
+                <div class="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-2xl p-6 md:p-8 text-white shadow-lg relative overflow-hidden">
+                    <div class="absolute -right-10 -bottom-10 opacity-10 text-white"><i data-lucide="file-text" class="w-64 h-64"></i></div>
+                    <div class="relative z-10 max-w-2xl">
+                        <span class="bg-blue-500/30 text-blue-100 text-xs px-3 py-1 rounded-full font-semibold uppercase">Layanan Elektronik</span>
+                        <h2 class="text-2xl md:text-3xl font-extrabold mt-2 mb-3">Buat Surat Pernyataan Digital</h2>
+                        <p class="text-sm text-blue-100">Pilih jenis surat, isi formulir dengan tinta digital hitam, berikan tanda tangan, lalu kirim ke loket petugas wawancara.</p>
+                    </div>
+                </div>
+
+                <!-- Pilihan Tipe Surat -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <button id="card-umum" onclick="window.selectJenisSurat('umum')" class="p-5 bg-white border-2 border-blue-600 rounded-2xl shadow-sm text-left flex items-start gap-4">
+                        <div class="p-3 bg-blue-50 rounded-xl text-blue-600"><i data-lucide="file-check-2" class="w-6 h-6"></i></div>
+                        <div>
+                            <h3 class="font-bold text-slate-800">1. Surat Pernyataan Umum</h3>
+                            <p class="text-xs text-slate-500 mt-1">Kebenaran dokumen persyaratan paspor untuk pemohon dewasa.</p>
+                        </div>
+                    </button>
+                    <button id="card-nama" onclick="window.selectJenisSurat('nama')" class="p-5 bg-white border border-slate-200 rounded-2xl shadow-sm text-left flex items-start gap-4">
+                        <div class="p-3 bg-violet-50 rounded-xl text-violet-600"><i data-lucide="file-signature" class="w-6 h-6"></i></div>
+                        <div>
+                            <h3 class="font-bold text-slate-800">2. Penambahan Nama</h3>
+                            <p class="text-xs text-slate-500 mt-1">Permohonan penyesuaian nama menjadi 3 suku kata (Umroh/Haji).</p>
+                        </div>
+                    </button>
+                    <button id="card-orangtua" onclick="window.selectJenisSurat('orangtua')" class="p-5 bg-white border border-slate-200 rounded-2xl shadow-sm text-left flex items-start gap-4">
+                        <div class="p-3 bg-indigo-50 rounded-xl text-indigo-600"><i data-lucide="users" class="w-6 h-6"></i></div>
+                        <div>
+                            <h3 class="font-bold text-slate-800">3. Izin Orang Tua / Wali</h3>
+                            <p class="text-xs text-slate-500 mt-1">Surat persetujuan orang tua untuk pembuatan paspor anak di bawah umur.</p>
+                        </div>
+                    </button>
+                </div>
+
+                <!-- Formulir Input Dinamis -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8">
+                    <h3 class="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2 border-b pb-4">
+                        <i data-lucide="edit-3" class="text-blue-600"></i> Isian Formulir Data Diri
+                    </h3>
+
+                    <!-- FORM 1: SURAT PERNYATAAN UMUM -->
+                    <div id="form-umum" class="space-y-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div><label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Nama Lengkap</label><input type="text" id="p-nama" placeholder="Sesuai KTP" class="w-full px-4 py-2 border rounded-lg outline-none focus:border-blue-500"></div>
+                            <div><label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Tempat/Tanggal Lahir</label><input type="text" id="p-ttl" placeholder="Bekasi, 12 Agustus 1990" class="w-full px-4 py-2 border rounded-lg outline-none focus:border-blue-500"></div>
+                            <div class="md:col-span-2"><label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Alamat Lengkap (KTP)</label><input type="text" id="p-alamat" placeholder="Alamat rumah tinggal" class="w-full px-4 py-2 border rounded-lg outline-none focus:border-blue-500"></div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Pekerjaan</label>
+                                <select id="p-pekerjaan" class="w-full px-4 py-2 border rounded-lg outline-none focus:border-blue-500 bg-white">
+                                    <option value="1. Pegawai Negeri Sipil">1. Pegawai Negeri Sipil</option>
+                                    <option value="2. TNI/POLRI">2. TNI/POLRI</option>
+                                    <option value="3. Wiraswasta">3. Wiraswasta</option>
+                                    <option value="4. Pegawai Swasta">4. Pegawai Swasta</option>
+                                    <option value="5. Pegawai BUMN">5. Pegawai BUMN</option>
+                                    <option value="6. Pelajar">6. Pelajar</option>
+                                    <option value="7. Ibu Rumah Tangga">7. Ibu Rumah Tangga</option>
+                                    <option value="8. Lainnya">8. Lainnya</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Status Kepemilikan Paspor RI</label>
+                                <select id="p-status-paspor" onchange="window.togglePasporFields(this.value)" class="w-full px-4 py-2 border rounded-lg outline-none focus:border-blue-500 bg-white">
+                                    <option value="belum">Belum Pernah Memiliki Paspor</option>
+                                    <option value="telah">Telah Memiliki Paspor Sebelumnya</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div id="field-paspor-container" class="grid grid-cols-1 md:grid-cols-3 gap-4 hidden">
+                            <div><label class="block text-xs font-semibold text-slate-600 uppercase mb-1">No. Paspor</label><input type="text" id="p-no-paspor" class="w-full px-4 py-2 border rounded-lg outline-none focus:border-blue-500"></div>
+                            <div><label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Dikeluarkan Oleh</label><input type="text" id="p-paspor-penerbit" class="w-full px-4 py-2 border rounded-lg outline-none focus:border-blue-500"></div>
+                            <div><label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Tanggal Habis Berlaku</label><input type="text" id="p-paspor-expiry" placeholder="Tgl/Bln/Thn" class="w-full px-4 py-2 border rounded-lg outline-none focus:border-blue-500"></div>
+                        </div>
+                        <div><label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Maksud Kunjungan ke Luar Negeri Dalam Rangka</label><input type="text" id="p-tujuan-kunjungan" placeholder="Contoh: Berwisata / Umroh / Studi Banding" class="w-full px-4 py-2 border rounded-lg outline-none focus:border-blue-500"></div>
+                    </div>
+
+                    <!-- FORM 2: PENAMBAHAN NAMA -->
+                    <div id="form-nama" class="space-y-4 hidden">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div><label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Nama Lengkap (KTP)</label><input type="text" id="nm-nama" placeholder="Sesuai kartu identitas" class="w-full px-4 py-2 border rounded-lg outline-none focus:border-violet-500"></div>
+                            <div><label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Tempat/Tanggal Lahir</label><input type="text" id="nm-ttl" placeholder="Bekasi, 12 Agustus 1990" class="w-full px-4 py-2 border rounded-lg outline-none focus:border-violet-500"></div>
+                            <div><label class="block text-xs font-semibold text-slate-600 uppercase mb-1">No. Paspor (Jika Ada)</label><input type="text" id="nm-no-paspor" placeholder="Isi '-' jika tidak ada" class="w-full px-4 py-2 border rounded-lg outline-none focus:border-violet-500"></div>
+                            <div><label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Alamat Lengkap</label><input type="text" id="nm-alamat" class="w-full px-4 py-2 border rounded-lg outline-none focus:border-violet-500"></div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Sumber Suku Kata Nama Diambil Dari</label>
+                                <select id="nm-sumber" onchange="window.toggleSumberNama(this.value)" class="w-full px-4 py-2 border rounded-lg outline-none focus:border-violet-500 bg-white">
+                                    <option value="Bapak">Nama Bapak</option>
+                                    <option value="Kakek">Nama Kakek</option>
+                                </select>
+                            </div>
+                            <div id="field-nama-bapak"><label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Nama Bapak Kandung</label><input type="text" id="nm-bapak" class="w-full px-4 py-2 border rounded-lg outline-none focus:border-violet-500"></div>
+                            <div id="field-nama-kakek" class="hidden"><label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Nama Kakek Kandung</label><input type="text" id="nm-kakek" class="w-full px-4 py-2 border rounded-lg outline-none focus:border-violet-500"></div>
+                            <div class="md:col-span-2"><label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Ajukan Penambahan Nama Menjadi (3 Suku Kata)</label><input type="text" id="nm-nama-baru" placeholder="Contoh: MUHAMMAD ARKAN JUNAIDI" class="w-full px-4 py-2 border rounded-lg outline-none focus:border-violet-500"></div>
+                        </div>
+                    </div>
+
+                    <!-- FORM 3: PERNYATAAN ORANG TUA -->
+                    <div id="form-orangtua" class="space-y-4 hidden">
+                        <h4 class="text-sm font-bold text-indigo-900 bg-indigo-50 px-3 py-1.5 rounded-lg">Identitas Orang Tua / Wali (Penanggung Jawab)</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div><label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Nama Orang Tua</label><input type="text" id="ot-nama" class="w-full px-4 py-2 border rounded-lg outline-none focus:border-indigo-500"></div>
+                            <div><label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Jenis Kelamin</label><select id="ot-jk" class="w-full px-4 py-2 border rounded-lg outline-none focus:border-indigo-500 bg-white"><option value="L">Laki-laki (L)</option><option value="P">Perempuan (P)</option></select></div>
+                            <div><label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Tempat/Tanggal Lahir Ortu</label><input type="text" id="ot-ttl" placeholder="Jakarta, 11 Desember 1980" class="w-full px-4 py-2 border rounded-lg outline-none focus:border-indigo-500"></div>
+                            <div><label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Pekerjaan Orang Tua</label><input type="text" id="ot-pekerjaan" class="w-full px-4 py-2 border rounded-lg outline-none focus:border-indigo-500"></div>
+                            <div><label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Pendidikan Terakhir Ortu</label><input type="text" id="ot-pendidikan" placeholder="SMA / S1 / S2" class="w-full px-4 py-2 border rounded-lg outline-none focus:border-indigo-500"></div>
+                            <div><label class="block text-xs font-semibold text-slate-600 uppercase mb-1">No. KTP Orang Tua</label><input type="text" id="ot-ktp" class="w-full px-4 py-2 border rounded-lg outline-none focus:border-indigo-500"></div>
+                            <div><label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Tanggal KTP Diberikan</label><input type="text" id="ot-ktp-tanggal" placeholder="Tgl/Bln/Thn" class="w-full px-4 py-2 border rounded-lg outline-none focus:border-indigo-500"></div>
+                            <div><label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Masa Berlaku KTP s/d</label><input type="text" id="ot-ktp-expiry" placeholder="SEUMUR HIDUP / Tanggal" class="w-full px-4 py-2 border rounded-lg outline-none focus:border-indigo-500"></div>
+                            <div class="md:col-span-2"><label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Alamat Orang Tua (Sesuai KTP)</label><input type="text" id="ot-alamat" class="w-full px-4 py-2 border rounded-lg outline-none focus:border-indigo-500"></div>
+                        </div>
+
+                        <h4 class="text-sm font-bold text-indigo-900 bg-indigo-50 px-3 py-1.5 rounded-lg mt-6">Identitas Anak Pemohon Paspor</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div><label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Nama Lengkap Anak</label><input type="text" id="anak-nama" class="w-full px-4 py-2 border rounded-lg outline-none focus:border-indigo-500"></div>
+                            <div><label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Tempat/Tanggal Lahir Anak</label><input type="text" id="anak-ttl" placeholder="Bekasi, 01 Januari 2018" class="w-full px-4 py-2 border rounded-lg outline-none focus:border-indigo-500"></div>
+                            <div class="md:col-span-2"><label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Alamat Anak Sesuai KK</label><input type="text" id="anak-alamat" class="w-full px-4 py-2 border rounded-lg outline-none focus:border-indigo-500"></div>
+                            <div><label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Pendidikan Anak</label><input type="text" id="anak-pendidikan" placeholder="SD / SMP" class="w-full px-4 py-2 border rounded-lg outline-none focus:border-indigo-500"></div>
+                            <div><label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Nomor KTP / KIA Anak (Jika Ada)</label><input type="text" id="anak-ktp" placeholder="Isi '-' jika belum ada" class="w-full px-4 py-2 border rounded-lg outline-none focus:border-indigo-500"></div>
+                            <div><label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Ke Luar Negeri Dalam Rangka</label><input type="text" id="anak-tujuan" placeholder="Kunjungan Keluarga / Liburan" class="w-full px-4 py-2 border rounded-lg outline-none focus:border-indigo-500"></div>
+                            <div><label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Negara Tujuan Perjalanan</label><input type="text" id="anak-negara" placeholder="Contoh: Arab Saudi / Malaysia" class="w-full px-4 py-2 border rounded-lg outline-none focus:border-indigo-500"></div>
+                            <div class="md:col-span-2"><label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Keberangkatan Sepenuhnya Ditanggung Oleh</label><input type="text" id="anak-tanggungan" placeholder="pribadi / perusahaan / kantor / lembaga" class="w-full px-4 py-2 border rounded-lg outline-none focus:border-indigo-500"></div>
+                        </div>
+                    </div>
+
+                    <!-- TANDA TANGAN PAD -->
+                    <div class="mt-8 border-t pt-6">
+                        <div class="flex justify-between items-end mb-2">
+                            <div>
+                                <label class="block text-sm font-bold text-slate-700 uppercase tracking-wide">Tanda Tangan Digital Pemohon</label>
+                                <p class="text-xs text-slate-400">Silakan goreskan jari / kursor Anda di kotak canvas di bawah ini (Pena Tinta Hitam).</p>
+                            </div>
+                            <button type="button" onclick="window.clearCanvas()" class="text-xs text-red-500 font-bold hover:text-red-700 flex items-center gap-1">
+                                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> Hapus Coretan
+                            </button>
+                        </div>
+                        <canvas id="signature-canvas" class="signature-pad w-full bg-slate-100 h-48 sm:h-56"></canvas>
+                    </div>
+
+                    <div class="mt-6 flex items-start gap-3">
+                        <input type="checkbox" id="persetujuan-chk" class="mt-1 w-4 h-4 border-slate-300 rounded text-blue-600">
+                        <label for="persetujuan-chk" class="text-xs text-slate-500 cursor-pointer select-none">
+                            Saya menyatakan dengan penuh kesadaran hukum bahwa data di atas diisi dengan BENAR, ASLI, dan tanda tangan tersebut adalah sah milik saya.
+                        </label>
+                    </div>
+
+                    <div class="mt-8 flex justify-end">
+                        <button type="button" id="btn-kirim" onclick="window.submitPernyataan()" class="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold px-8 py-3.5 rounded-xl shadow-md transition-all flex items-center justify-center gap-2">
+                            <i data-lucide="send" class="w-5 h-5"></i> Kirim Surat Pernyataan
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SECTION 2: DASHBOARD PETUGAS -->
+            <section id="section-petugas" class="space-y-6 hidden">
+                <!-- Statistik Monitor -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-semibold text-slate-400 uppercase">Total Antrean</p>
+                            <h4 id="stat-total" class="text-3xl font-extrabold text-slate-800 mt-1">0</h4>
+                        </div>
+                        <div class="p-3 bg-blue-50 text-blue-600 rounded-xl"><i data-lucide="folder-open" class="w-6 h-6"></i></div>
+                    </div>
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-semibold text-slate-400 uppercase">Belum Dicetak</p>
+                            <h4 id="stat-pending" class="text-3xl font-extrabold text-amber-600 mt-1">0</h4>
+                        </div>
+                        <div class="p-3 bg-amber-50 text-amber-600 rounded-xl"><i data-lucide="hourglass" class="w-6 h-6"></i></div>
+                    </div>
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-semibold text-slate-400 uppercase">Telah Dicetak</p>
+                            <h4 id="stat-cetak" class="text-3xl font-extrabold text-emerald-600 mt-1">0</h4>
+                        </div>
+                        <div class="p-3 bg-emerald-50 text-emerald-600 rounded-xl"><i data-lucide="printer" class="w-6 h-6"></i></div>
+                    </div>
+                </div>
+
+                <!-- Tabel Realtime -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div class="p-6 border-b border-slate-100 flex flex-wrap justify-between items-center gap-4">
+                        <div>
+                            <h3 class="text-lg font-bold text-slate-800">Antrean Surat Masuk Pemohon</h3>
+                            <p class="text-xs text-slate-400 mt-0.5">Sistem sinkronisasi langsung dengan loket wawancara.</p>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <!-- BUTTON TOGGLE LOGO -->
+                            <button id="btn-toggle-logo" onclick="window.toggleLogoKop()" class="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3.5 py-2 rounded-xl shadow-sm font-semibold flex items-center gap-2 transition-all duration-200">
+                                <i data-lucide="image" class="w-4 h-4"></i>
+                                <span id="text-toggle-logo">Sembunyikan Logo Kop</span>
+                            </button>
+                            <span id="monitoring-badge" class="text-xs font-bold text-emerald-600 uppercase tracking-wide animate-pulse flex items-center gap-1">
+                                <span class="w-2 h-2 rounded-full bg-emerald-500"></span> Live Cloud
+                            </span>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-slate-50 text-xs font-bold text-slate-500 border-b border-slate-200/50">
+                                    <th class="py-4 px-6 uppercase">Waktu Kirim</th>
+                                    <th class="py-4 px-6 uppercase">Nama Pemohon</th>
+                                    <th class="py-4 px-6 uppercase">Jenis Dokumen</th>
+                                    <th class="py-4 px-6 uppercase">Status</th>
+                                    <th class="py-4 px-6 uppercase text-right">Tindakan</th>
+                                </tr>
+                            </thead>
+                            <tbody id="table-body" class="divide-y divide-slate-100"></tbody>
+                        </table>
+                        <div id="table-empty" class="p-16 text-center hidden">
+                            <h4 class="font-bold text-slate-600">Belum Ada Antrean Masuk</h4>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="bg-slate-900 text-slate-400 border-t border-slate-800 py-6 px-4 text-center text-xs mt-auto">
+            <p>&copy; 2026 Kantor Imigrasi Kelas I Non TPI Bekasi. Direktorat Jenderal Imigrasi RI.</p>
+        </footer>
+    </div>
+
+    <!-- ============================================== -->
+    <!-- AREA KHUSUS RENDERING CETAK PDF - VERBATIM     -->
+    <!-- ============================================== -->
+    <div id="print-area"></div>
+
+    <!-- MODAL SETELAN FIREBASE CUSTOM -->
+    <div id="modal-config" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden no-print">
+        <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border text-left space-y-4">
+            <div class="flex justify-between items-center border-b pb-3">
+                <h4 class="text-lg font-extrabold text-slate-800 flex items-center gap-2">
+                    <i data-lucide="settings" class="text-blue-600"></i> Setelan Database Firebase Anda
+                </h4>
+                <button onclick="window.closeConfigModal()" class="text-slate-400 hover:text-slate-600">
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
+            <p class="text-xs text-slate-500 leading-relaxed">
+                Silakan tempel objek konfigurasi SDK dari Firebase Console Anda di bawah ini jika ingin mengubahnya secara manual:
+            </p>
+            <div>
+                <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Firebase SDK Config (JSON / JS Object)</label>
+                <textarea id="firebase-config-input" rows="7" placeholder='{&#10;  apiKey: "AIzaSy...",&#10;  authDomain: "...",&#10;  databaseURL: "...",&#10;  ...&#10;}' class="w-full p-3 border rounded-xl text-xs font-mono bg-slate-50 outline-none focus:border-blue-500 focus:bg-white transition-all"></textarea>
+            </div>
+            <div class="flex gap-3 pt-2">
+                <button onclick="window.saveFirebaseConfig()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-xl text-xs transition-all shadow-md">Simpan & Hubungkan</button>
+                <button onclick="window.resetFirebaseConfig()" class="bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold px-4 py-2.5 rounded-xl text-xs transition-all">Reset Default</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL POPUP NOTIFIKASI -->
+    <div id="modal-notif" class="fixed inset-0 bg-slate-900/60 flex items-center justify-center p-4 z-50 hidden no-print">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-6 text-center space-y-4 shadow-xl">
+            <h4 id="modal-title" class="text-lg font-bold text-slate-800">Pesan Sistem</h4>
+            <p id="modal-desc" class="text-sm text-slate-500"></p>
+            <button onclick="window.closeModal()" class="w-full bg-slate-800 text-white font-bold py-2 rounded-lg">Selesai</button>
+        </div>
+    </div>
+
+    <!-- SCRIPTS -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getDatabase, ref, set, onValue, remove } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js";
+
+        // =========================================================================
+        // DEKLARASI GLOBAL UNTUK VARIABEL STATE UTAMA (MENCEGAH TDZ / TEMPORAL DEAD ZONE)
+        // =========================================================================
+        window.selectedJenis = "umum";
+        window.currentDataList = [];
+        window.hasDrawn = false;
+        window.showLogoKop = true; // State default untuk logo kop surat
+
+        let useLocalFallback = true;
+        let isLocalSetup = false;
+        let localDatabase = [];
+        let localListeners = [];
+        let dbInstance = null;
+        let authInstance = null;
+
+        // Muat cadangan lokal secara instan
+        try {
+            const saved = localStorage.getItem('local_surat_pernyataan_db');
+            if (saved) localDatabase = JSON.parse(saved);
+        } catch(e) { 
+            console.error(e); 
+        }
+
+        // =========================================================================
+        // FUNGSI NAVIGASI GLOBAL
+        // =========================================================================
+        window.switchMode = (mode) => {
+            const sectionPemohon = document.getElementById("section-pemohon");
+            const sectionPetugas = document.getElementById("section-petugas");
+            
+            if (mode === 'pemohon') {
+                sectionPemohon.classList.remove("hidden");
+                sectionPetugas.classList.add("hidden");
+            } else {
+                sectionPemohon.classList.add("hidden");
+                sectionPetugas.classList.remove("hidden");
+            }
+            
+            const btnPem = document.getElementById("nav-btn-pemohon");
+            const btnPet = document.getElementById("nav-btn-petugas");
+            
+            if (mode === 'pemohon') {
+                btnPem.className = "px-4 py-2 rounded-lg text-xs md:text-sm font-semibold transition-all duration-200 flex items-center gap-2 bg-blue-600 text-white shadow-sm";
+                btnPet.className = "px-4 py-2 rounded-lg text-xs md:text-sm font-semibold transition-all duration-200 flex items-center gap-2 text-blue-200 hover:text-white";
+                setTimeout(window.resizeCanvas, 200);
+            } else {
+                btnPem.className = "px-4 py-2 rounded-lg text-xs md:text-sm font-semibold transition-all duration-200 flex items-center gap-2 text-blue-200 hover:text-white";
+                btnPet.className = "px-4 py-2 rounded-lg text-xs md:text-sm font-semibold transition-all duration-200 flex items-center gap-2 bg-blue-600 text-white shadow-sm";
+            }
+        };
+
+        window.selectJenisSurat = (jenis) => {
+            window.selectedJenis = jenis;
+            ["umum", "orangtua", "nama"].forEach(c => {
+                const el = document.getElementById(`card-${c}`);
+                if (c === jenis) {
+                    el.className = "p-5 bg-white border-2 border-blue-600 rounded-2xl shadow-sm text-left flex items-start gap-4";
+                } else {
+                    el.className = "p-5 bg-white border border-slate-200 rounded-2xl shadow-sm text-left flex items-start gap-4";
+                }
+                document.getElementById(`form-${c}`).classList.toggle("hidden", c !== jenis);
+            });
+        };
+
+        window.toggleLogoKop = () => {
+            window.showLogoKop = !window.showLogoKop;
+            const btn = document.getElementById("btn-toggle-logo");
+            const text = document.getElementById("text-toggle-logo");
+            if (window.showLogoKop) {
+                btn.className = "bg-blue-600 hover:bg-blue-700 text-white text-xs px-3.5 py-2 rounded-xl shadow-sm font-semibold flex items-center gap-2 transition-all duration-200";
+                text.innerText = "Sembunyikan Logo Kop";
+            } else {
+                btn.className = "bg-slate-500 hover:bg-slate-600 text-white text-xs px-3.5 py-2 rounded-xl shadow-sm font-semibold flex items-center gap-2 transition-all duration-200";
+                text.innerText = "Tampilkan Logo Kop";
+            }
+        };
+
+        window.togglePasporFields = (val) => {
+            document.getElementById("field-paspor-container").classList.toggle("hidden", val !== "telah");
+        };
+
+        window.toggleSumberNama = (val) => {
+            document.getElementById("field-nama-bapak").classList.toggle("hidden", val === "Kakek");
+            document.getElementById("field-nama-kakek").classList.toggle("hidden", val !== "Kakek");
+        };
+
+        window.closeModal = () => {
+            document.getElementById("modal-notif").classList.add("hidden");
+        };
+
+        window.showModal = (title, desc) => {
+            document.getElementById("modal-title").innerText = title;
+            document.getElementById("modal-desc").innerText = desc;
+            document.getElementById("modal-notif").classList.remove("hidden");
+        };
+
+        window.openConfigModal = () => {
+            const saved = localStorage.getItem('user_firebase_config');
+            if (saved) {
+                document.getElementById("firebase-config-input").value = saved;
+            }
+            document.getElementById("modal-config").classList.remove("hidden");
+        };
+
+        window.closeConfigModal = () => {
+            document.getElementById("modal-config").classList.add("hidden");
+        };
+
+        function parseLooseObject(str) {
+            try {
+                return JSON.parse(str);
+            } catch (e) {
+                try {
+                    return (new Function("return " + str))();
+                } catch (err) {
+                    console.error("Gagal parse config:", err);
+                    return null;
+                }
+            }
+        }
+
+        window.saveFirebaseConfig = () => {
+            const val = document.getElementById("firebase-config-input").value.trim();
+            if (!val) return window.showModal("Gagal", "Harap isi konfigurasi SDK Anda.");
+            
+            const evaluated = parseLooseObject(val);
+            if (evaluated && evaluated.databaseURL) {
+                localStorage.setItem('user_firebase_config', val);
+                window.closeConfigModal();
+                window.showModal("Konfigurasi Disimpan", "Koneksi disimpan. Halaman akan dimuat ulang...");
+                setTimeout(() => window.location.reload(), 1500);
+            } else {
+                window.showModal("Format Salah", "Konfigurasi harus berupa Object valid yang minimal berisi databaseURL.");
+            }
+        };
+
+        window.resetFirebaseConfig = () => {
+            localStorage.removeItem('user_firebase_config');
+            window.closeConfigModal();
+            window.showModal("Reset Selesai", "Konfigurasi manual dihapus. Sistem akan memuat konfigurasi bawaan.");
+            setTimeout(() => window.location.reload(), 1500);
+        };
+
+        // =========================================================================
+        // TANDA TANGAN DIGITAL (RESPONSIF DAN MANDIRI)
+        // =========================================================================
+        const canvas = document.getElementById("signature-canvas");
+        const ctx = canvas.getContext("2d");
+        let isDrawing = false;
+
+        window.resizeCanvas = () => {
+            const ratio = Math.max(window.devicePixelRatio || 1, 1);
+            canvas.width = canvas.offsetWidth * ratio;
+            canvas.height = canvas.offsetHeight * ratio;
+            ctx.scale(ratio, ratio);
+            ctx.strokeStyle = "#000000";
+            ctx.lineWidth = 2.5;
+            ctx.lineCap = "round";
+            ctx.lineJoin = "round";
+        };
+        window.addEventListener("resize", window.resizeCanvas);
+        setTimeout(window.resizeCanvas, 300);
+
+        function getPos(e) {
+            const rect = canvas.getBoundingClientRect();
+            if (e.touches && e.touches.length > 0) {
+                return { x: e.touches[0].clientX - rect.left, y: e.touches[0].clientY - rect.top };
+            }
+            return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+        }
+
+        const startDraw = (e) => { 
+            isDrawing = true; 
+            window.hasDrawn = true;
+            const p = getPos(e); 
+            ctx.beginPath(); 
+            ctx.moveTo(p.x, p.y); 
+        };
+        const drawing = (e) => { 
+            if(!isDrawing) return; 
+            e.preventDefault(); 
+            const p = getPos(e); 
+            ctx.lineTo(p.x, p.y); 
+            ctx.stroke(); 
+        };
+        const endDraw = () => isDrawing = false;
+
+        canvas.addEventListener("mousedown", startDraw); 
+        canvas.addEventListener("mousemove", drawing);
+        canvas.addEventListener("mouseup", endDraw); 
+        canvas.addEventListener("mouseleave", endDraw);
+        canvas.addEventListener("touchstart", startDraw); 
+        canvas.addEventListener("touchmove", drawing); 
+        canvas.addEventListener("touchend", endDraw);
+        
+        window.clearCanvas = () => { 
+            ctx.clearRect(0, 0, canvas.width, canvas.height); 
+            window.hasDrawn = false;
+            window.resizeCanvas(); 
+        };
+
+        // =========================================================================
+        // DATABASE CONFIGURATION & REALTIME SYNC (SINGAPORE SERVER)
+        // =========================================================================
+        const defaultFirebaseConfig = {
+            apiKey: "AIzaSyCEeGri2FpcsYvQBNMfx-IgQ3n1suNKe0I",
+            authDomain: "surat-pernyataan-kanim-bekasi.firebaseapp.com",
+            databaseURL: "https://surat-pernyataan-kanim-bekasi-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "surat-pernyataan-kanim-bekasi",
+            storageBucket: "surat-pernyataan-kanim-bekasi.firebasestorage.app",
+            messagingSenderId: "92168659904",
+            appId: "1:92168659904:web:83675bde00c04e50d35e25",
+            measurementId: "G-XMY1143Y9Z"
+        };
+
+        let activeConfig = defaultFirebaseConfig;
+
+        // Baca config custom di memori browser jika ada
+        const savedCustomConfig = localStorage.getItem('user_firebase_config');
+        if (savedCustomConfig) {
+            const evaluated = parseLooseObject(savedCustomConfig);
+            if (evaluated) activeConfig = evaluated;
+        }
+
+        // Jalankan Inisialisasi Firebase Realtime
+        if (activeConfig) {
+            try {
+                const app = initializeApp(activeConfig);
+                authInstance = getAuth(app);
+                dbInstance = getDatabase(app);
+
+                // Autentikasi Anonim
+                try {
+                    await signInAnonymously(authInstance);
+                } catch(ae) {
+                    console.warn("Auth dibatalkan, terhubung langsung:", ae);
+                }
+
+                // Sistem pendeteksi status koneksi Realtime (.info/connected)
+                const connectedRef = ref(dbInstance, ".info/connected");
+                onValue(connectedRef, (snap) => {
+                    if (snap.val() === true) {
+                        useLocalFallback = false;
+                        document.getElementById("fallback-warning-banner").classList.add("hidden");
+                        const badge = document.getElementById("monitoring-badge");
+                        if (badge) {
+                            badge.innerHTML = `<span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></span> Live Cloud`;
+                        }
+                        setupFirebaseListener();
+                    } else {
+                        activateLocalFallbackMode();
+                    }
+                });
+
+            } catch (e) {
+                console.error("Inisialisasi Firebase gagal:", e);
+                activateLocalFallbackMode();
+            }
+        } else {
+            activateLocalFallbackMode();
+        }
+
+        function activateLocalFallbackMode() {
+            useLocalFallback = true;
+            const banner = document.getElementById("fallback-warning-banner");
+            if (banner) banner.classList.remove("hidden");
+            const badge = document.getElementById("monitoring-badge");
+            if (badge) {
+                badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-amber-500"></span> Lokal Aktif (Offline)`;
+            }
+            setupLocalListener();
+        }
+
+        async function initAuth() {
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('role') !== 'petugas') {
+                document.getElementById('role-switcher-container').classList.add('hidden');
+                window.switchMode('pemohon');
+            } else {
+                window.switchMode('petugas');
+            }
+        }
+
+        function setupFirebaseListener() {
+            const dbRef = ref(dbInstance, 'surat_pernyataan');
+            onValue(dbRef, (snapshot) => {
+                const list = [];
+                snapshot.forEach((childSnapshot) => {
+                    const item = childSnapshot.val();
+                    let jsDate = new Date();
+                    if (item.dibuat_pada) jsDate = new Date(item.dibuat_pada);
+                    list.push({ ...item, id: childSnapshot.key, dibuat_pada_obj: jsDate });
+                });
+                list.sort((a,b) => b.dibuat_pada_obj - a.dibuat_pada_obj);
+                renderTable(list);
+            }, (error) => {
+                console.error("Firebase Connection Error, falling back:", error);
+                activateLocalFallbackMode();
+            });
+        }
+
+        function setupLocalListener() {
+            if (isLocalSetup) return;
+            isLocalSetup = true;
+            localListeners.push((data) => {
+                const list = data.map(i => ({ ...i, dibuat_pada_obj: new Date(i.dibuat_pada) }));
+                list.sort((a,b) => b.dibuat_pada_obj - a.dibuat_pada_obj);
+                renderTable(list);
+            });
+            triggerLocalListeners();
+        }
+
+        function triggerLocalListeners() { 
+            localListeners.forEach(cb => cb([...localDatabase])); 
+        }
+
+        // Sinkronisasi lokal instan antar-tab jika offline
+        window.addEventListener('storage', (e) => {
+            if (e.key === 'local_surat_pernyataan_db') {
+                try {
+                    localDatabase = JSON.parse(e.newValue) || [];
+                    triggerLocalListeners();
+                } catch(err) { 
+                    console.error(err); 
+                }
+            }
+        });
+
+        // =========================================================================
+        // PENGIRIMAN DATA FORMULIR (GETVAL ANTI CRASH)
+        // =========================================================================
+        const getVal = (id) => {
+            const el = document.getElementById(id);
+            return el ? el.value.trim() : "";
+        };
+
+        window.submitPernyataan = async () => {
+            if (!document.getElementById("persetujuan-chk").checked) {
+                return window.showModal("Aksi Ditolak", "Anda harus mencentang persetujuan kebenaran data.");
+            }
+
+            if (!window.hasDrawn) {
+                return window.showModal("Tanda Tangan Kosong", "Silakan coret tanda tangan Anda pada canvas.");
+            }
+
+            const btn = document.getElementById("btn-kirim");
+            btn.disabled = true; 
+            btn.innerText = "Mengirim...";
+
+            let nama = "";
+            let dataKhusus = {};
+
+            if (window.selectedJenis === "umum") {
+                nama = getVal("p-nama");
+                dataKhusus = {
+                    ttl: getVal("p-ttl"),
+                    alamat: getVal("p-alamat"),
+                    pekerjaan: getVal("p-pekerjaan"),
+                    status_paspor: getVal("p-status-paspor"),
+                    no_paspor: getVal("p-no-paspor"),
+                    paspor_penerbit: getVal("p-paspor-penerbit"),
+                    paspor_expiry: getVal("p-paspor-expiry"),
+                    tujuan_kunjungan: getVal("p-tujuan-kunjungan")
+                };
+            } else if (window.selectedJenis === "nama") {
+                nama = getVal("nm-nama");
+                dataKhusus = {
+                    ttl: getVal("nm-ttl"),
+                    no_paspor: getVal("nm-no-paspor"),
+                    alamat: getVal("nm-alamat"),
+                    nm_sumber: getVal("nm-sumber"),
+                    nm_bapak: getVal("nm-bapak"),
+                    nm_kakek: getVal("nm-kakek"),
+                    nm_nama_baru: getVal("nm-nama-baru")
+                };
+            } else if (window.selectedJenis === "orangtua") {
+                nama = getVal("ot-nama");
+                dataKhusus = {
+                    ot_jk: getVal("ot-jk"),
+                    ot_ttl: getVal("ot-ttl"),
+                    ot_alamat: getVal("ot-alamat"),
+                    ot_pekerjaan: getVal("ot-pekerjaan"),
+                    ot_pendidikan: getVal("ot-pendidikan"),
+                    ot_ktp: getVal("ot-ktp"),
+                    ot_ktp_tanggal: getVal("ot-ktp-tanggal"),
+                    ot_ktp_expiry: getVal("ot-ktp-expiry"),
+                    anak_nama: getVal("anak-nama"),
+                    anak_ttl: getVal("anak-ttl"),
+                    anak_alamat: getVal("anak-alamat"),
+                    anak_pendidikan: getVal("anak-pendidikan"),
+                    anak_ktp: getVal("anak-ktp"),
+                    anak_tujuan: getVal("anak-tujuan"),
+                    anak_negara: getVal("anak-negara"),
+                    anak_tanggungan: getVal("anak-tanggungan")
+                };
+            }
+
+            if (!nama) {
+                btn.disabled = false; 
+                btn.innerText = "Kirim Surat Pernyataan";
+                return window.showModal("Form Tidak Lengkap", "Nama Utama harus diisi.");
+            }
+
+            const uniqueId = "BKS-" + Date.now();
+            const payload = {
+                id: uniqueId,
+                jenis_surat: window.selectedJenis,
+                nama_utama: nama,
+                status_cetak: "Belum Dicetak",
+                dibuat_pada: new Date().toISOString(),
+                tanda_tangan_base64: canvas.toDataURL(),
+                data_khusus: dataKhusus
+            };
+
+            try {
+                if (useLocalFallback) {
+                    localDatabase.unshift(payload);
+                    localStorage.setItem('local_surat_pernyataan_db', JSON.stringify(localDatabase));
+                    triggerLocalListeners();
+                } else {
+                    const dataRef = ref(dbInstance, 'surat_pernyataan/' + uniqueId);
+                    await set(dataRef, payload);
+                }
+                window.showModal("Sukses Terkirim", "Surat pernyataan elektronik Anda berhasil dikirim ke loket.");
+                window.clearCanvas();
+                
+                // Reset isian teks
+                document.querySelectorAll("input[type='text']").forEach(i => i.value = "");
+                document.getElementById("persetujuan-chk").checked = false;
+            } catch (e) {
+                console.error("Firebase write failed, saving locally:", e);
+                localDatabase.unshift(payload);
+                localStorage.setItem('local_surat_pernyataan_db', JSON.stringify(localDatabase));
+                triggerLocalListeners();
+                window.showModal("Terkirim Lokal", "Koneksi cloud terhambat. Data tersimpan di memori lokal.");
+                window.clearCanvas();
+                document.querySelectorAll("input[type='text']").forEach(i => i.value = "");
+                document.getElementById("persetujuan-chk").checked = false;
+            } finally {
+                btn.disabled = false; 
+                btn.innerText = "Kirim Surat Pernyataan";
+            }
+        };
+
+        // =========================================================================
+        // REALTIME TABLE RENDER (OFFICER DASHBOARD)
+        // =========================================================================
+        function renderTable(list) {
+            window.currentDataList = list;
+            const tbody = document.getElementById("table-body");
+            tbody.innerHTML = "";
+            
+            document.getElementById("stat-total").innerText = list.length;
+            document.getElementById("stat-pending").innerText = list.filter(x => x.status_cetak !== "Sudah Dicetak").length;
+            document.getElementById("stat-cetak").innerText = list.filter(x => x.status_cetak === "Sudah Dicetak").length;
+
+            if (list.length === 0) {
+                document.getElementById("table-empty").classList.remove("hidden");
+                return;
+            }
+            document.getElementById("table-empty").classList.add("hidden");
+
+            list.forEach(item => {
+                const wkt = item.dibuat_pada_obj.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + " WIB";
+                const isCetak = item.status_cetak === "Sudah Dicetak";
+                const badgeJns = item.jenis_surat === "umum" ? "Kebenaran Data" : item.jenis_surat === "orangtua" ? "Izin Orang Tua" : "Tambah Nama";
+                
+                tbody.innerHTML += `
+                    <tr class="border-b hover:bg-slate-50 text-sm">
+                        <td class="py-4 px-6">${wkt}</td>
+                        <td class="py-4 px-6 font-bold text-slate-800">${item.nama_utama}</td>
+                        <td class="py-4 px-6"><span class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-xs">${badgeJns}</span></td>
+                        <td class="py-4 px-6 font-semibold ${isCetak?'text-emerald-600':'text-amber-600 animate-pulse'}">${item.status_cetak}</td>
+                        <td class="py-4 px-6 text-right">
+                            <button onclick="window.prosesCetakLolos('${item.id}')" class="bg-slate-800 hover:bg-slate-900 text-white text-xs px-3.5 py-1.5 rounded shadow font-bold">Cetak Berkas</button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        // =========================================================================
+        // VERBATIM PRINT ENGINE WITH DYNAMIC LOGO SWITCH & AUTO-DELETE PRIVACY PROTECTOR
+        // =========================================================================
+        window.prosesCetakLolos = async function(id) {
+            const item = window.currentDataList.find(x => x.id === id);
+            if (!item) return;
+
+            const area = document.getElementById("print-area");
+            const tgl = new Date(item.dibuat_pada).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+            const dk = item.data_khusus;
+            let formContent = "";
+
+            // Dynamic Logo Handler (Show/Hide on Left Side)
+            const logoHTML = window.showLogoKop ? `
+                <div style="position: absolute; left: 10px; top: 5px;">
+                    <img src="https://placehold.co/80x80/003366/ffffff?text=IMIGRASI" alt="Logo Garuda" style="width: 70px; height: 70px; object-fit: contain; border-radius: 50%;" />
+                </div>
+            ` : '';
+
+            const paddingLeft = window.showLogoKop ? '80px' : '0px';
+
+            const kopSurat = `
+                <div style="text-align: center; border-bottom: 3px double #000; padding-bottom: 8px; margin-bottom: 25px; font-family: 'Times New Roman', Times, serif; position: relative; min-height: 80px;">
+                    ${logoHTML}
+                    <div style="font-size: 11pt; font-weight: normal; margin: 0; letter-spacing: 0.5px; padding-left: ${paddingLeft};">KEMENTERIAN IMIGRASI DAN PEMASYARAKATAN REPUBLIK INDONESIA</div>
+                    <div style="font-size: 13pt; font-weight: bold; margin: 0; padding-left: ${paddingLeft};">DIREKTORAT JENDERAL IMIGRASI</div>
+                    <div style="font-size: 12pt; font-weight: bold; margin: 0; padding-left: ${paddingLeft};">KANTOR WILAYAH JAWA BARAT</div>
+                    <div style="font-size: 14pt; font-weight: bold; text-decoration: underline; margin: 5px 0 2px 0; padding-left: ${paddingLeft};">KANTOR IMIGRASI KELAS I NON TPI BEKASI</div>
+                    <div style="font-size: 9.5pt; margin: 0; padding-left: ${paddingLeft};">Jalan Perjuangan Teluk Pucung Bekasi Utara</div>
+                    <div style="font-size: 9.5pt; margin: 0; padding-left: ${paddingLeft};">Laman: bekasi.imigrasi.go.id, Pos-el: kanimbekasi@imigrasi.go.id</div>
+                </div>
+            `;
+
+            if (item.jenis_surat === "umum") {
+                formContent = `
+                    <div style="padding: 15mm; font-size: 11pt; line-height: 1.45; font-family: 'Times New Roman', Times, serif;">
+                        ${kopSurat}
+                        <h3 style="text-align: center; font-size: 13pt; font-weight: bold; text-decoration: underline; margin-bottom: 20px;">SURAT PERNYATAAN</h3>
+                        <p style="margin-bottom: 10px;">Yang bertandatangan dibawah ini :</p>
+                        <table style="width: 100%; font-size: 11pt; margin-bottom: 15px;">
+                            <tr><td style="width: 30%; height: 24px;">Nama</td><td style="width: 3%;">:</td><td style="font-weight: bold; text-transform: uppercase;">${item.nama_utama}</td></tr>
+                            <tr><td style="height: 24px;">Tempat/Tanggal Lahir</td><td>:</td><td>${dk.ttl || "..........................."}</td></tr>
+                            <tr><td style="height: 24px;">Alamat</td><td>:</td><td>${dk.alamat || "..........................."}</td></tr>
+                            <tr><td style="height: 24px;">Pekerjaan</td><td>:</td><td><b>${dk.pekerjaan || "..........................."}</b></td></tr>
+                        </table>
+                        
+                        <div style="text-align: center; font-weight: bold; font-size: 11.5pt; margin-bottom: 15px;">............................................................DENGAN INI MENYATAKAN............................................................</div>
+                        
+                        <div style="padding-left: 15px; text-align: justify;">
+                            <p style="margin: 0 0 8px 0;">1. Bahwa sampai saat ini saya belum pernah / telah*) memiliki Dokumen Perjalanan Republik Indonesia (Paspor RI).</p>
+                            <p style="margin: 0 0 8px 0;">2. Bahwa saya akan menjaga Paspor Republik Indonesia atas nama saya dengan sebaik-baiknya dan tidak akan menyerahkan kepada pihak lain yang tidak berhak.</p>
+                            <p style="margin: 0 0 8px 0;">3. Bahwa saya tidak akan melakukan perubahan apa pun dalam bentuk tulisan, cetakan, foto maupun cap yang terdapat di dalam Paspor Republik Indonesia.</p>
+                            <p style="margin: 0 0 8px 0;">4. Bahwa maksud dan kunjungan saya keluar negeri dalam rangka <b>${dk.tujuan_kunjungan || "..........................."}</b>.</p>
+                            <p style="margin: 0 0 8px 0;">5. Bahwa saya memahami Paspor Republik Indonesia merupakan dokumen perjalanan yang diterbitkan berdasarkan data, dokumen, dan keterangan yang saya sampaikan kepada Petugas Imigrasi.</p>
+                            <p style="margin: 0 0 8px 0;">6. Bahwa segala aktivitas, pekerjaan, hubungan kerja, perbuatan hukum, maupun tindakan lainnya yang saya lakukan dengan menggunakan Paspor Republik Indonesia, baik di dalam maupun di luar negeri, sepenuhnya menjadi tanggung jawab saya sebagai pemegang paspor. Saya memahami bahwa Kantor Imigrasi hanya menerbitkan Paspor Republik Indonesia berdasarkan persyaratan yang berlaku dan tidak bertanggung jawab atas tindakan, pelanggaran, maupun akibat hukum yang timbul dari penggunaan paspor setelah paspor diterbitkan.</p>
+                            <p style="margin: 0 0 8px 0;">7. Bahwa apabila di kemudian hari saya melakukan pelanggaran hukum, bekerja secara nonprosedural di luar negeri, menjadi korban maupun pelaku Tindak Pidana Perdagangan Orang (TPPO), menyalahgunakan dokumen perjalanan, memberikan keterangan tidak benar, atau melakukan perbuatan lain yang bertentangan dengan ketentuan peraturan perundang-undangan, maka segala akibat hukum, administratif, perdata, maupun pidana yang timbul menjadi tanggung jawab pribadi saya dan tidak dapat dibebankan kepada Petugas Imigrasi maupun Kantor Imigrasi yang menerbitkan paspor tersebut.</p>
+                            <p style="margin: 0 0 8px 0;">8. Bahwa saya telah menerima penjelasan dan edukasi dari Petugas Imigrasi mengenai:</p>
+                            
+                            <!-- Tabel Edukasi Sesuai Gambar WhatsApp Image -->
+                            <table style="width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 10pt;">
+                                <thead>
+                                    <tr>
+                                        <th style="border: 1px solid #000; padding: 5px; text-align: center; width: 5%;">No.</th>
+                                        <th style="border: 1px solid #000; padding: 5px; text-align: left; width: 55%;">Materi Edukasi</th>
+                                        <th style="border: 1px solid #000; padding: 5px; text-align: center; width: 20%;">Paraf Pemohon</th>
+                                        <th style="border: 1px solid #000; padding: 5px; text-align: center; width: 20%;">Paraf Petugas</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td style="border: 1px solid #000; padding: 5px; text-align: center;">a.</td>
+                                        <td style="border: 1px solid #000; padding: 5px;">Pencegahan Tindak Pidana Perdagangan Orang (TPPO);</td>
+                                        <td style="border: 1px solid #000; padding: 5px;"></td>
+                                        <td style="border: 1px solid #000; padding: 5px;"></td>
+                                    </tr>
+                                    <tr>
+                                        <td style="border: 1px solid #000; padding: 5px; text-align: center;">b.</td>
+                                        <td style="border: 1px solid #000; padding: 5px;">Risiko bekerja ke luar negeri secara nonprosedural;</td>
+                                        <td style="border: 1px solid #000; padding: 5px;"></td>
+                                        <td style="border: 1px solid #000; padding: 5px;"></td>
+                                    </tr>
+                                    <tr>
+                                        <td style="border: 1px solid #000; padding: 5px; text-align: center;">c.</td>
+                                        <td style="border: 1px solid #000; padding: 5px;">Ketentuan penggunaan Paspor Republik Indonesia;</td>
+                                        <td style="border: 1px solid #000; padding: 5px;"></td>
+                                        <td style="border: 1px solid #000; padding: 5px;"></td>
+                                    </tr>
+                                    <tr>
+                                        <td style="border: 1px solid #000; padding: 5px; text-align: center;">d.</td>
+                                        <td style="border: 1px solid #000; padding: 5px;">Konsekuensi hukum atas penyalahgunaan Paspor RI</td>
+                                        <td style="border: 1px solid #000; padding: 5px;"></td>
+                                        <td style="border: 1px solid #000; padding: 5px;"></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <p style="text-align: justify; margin-top: 15px; text-indent: 15px;">
+                            Demikian Surat Pernyataan ini saya buat dengan sebenar-benarnya. Apabila di kemudian hari ditemukan bahwa saya memberikan keterangan dan/atau data yang tidak benar, saya bersedia menerima konsekuensi hukum sesuai dengan Pasal 126 huruf c Undang-Undang Nomor 6 Tahun 2011 tentang Keimigrasian, memberikan data yang tidak sah atau keterangan yang tidak benar untuk memperoleh dokumen perjalanan bagi dirinya sendiri atau orang lain dipidana dengan pidana penjara paling lama 5 (lima) tahun dan dipidana denda paling banyak Rp500.000.000,- (Lima Ratus Juta Rupiah)
+                        </p>
+                `;
+            } else if (item.jenis_surat === "nama") {
+                const s = dk.nm_sumber === "Kakek" ? `Kakek : <b>${dk.nm_kakek || "..........................."}</b>` : `Bapak : <b>${dk.nm_bapak || "..........................."}</b>`;
+                formContent = `
+                    <div style="padding: 15mm; font-size: 12pt; line-height: 1.6; font-family: 'Times New Roman', Times, serif;">
+                        ${kopSurat}
+                        <h3 style="text-align: center; font-size: 14pt; font-weight: bold; text-decoration: underline; margin: 30px 0;">SURAT PERNYATAAN</h3>
+                        <p style="margin-bottom: 15px;">Saya yang bertanda tangan di bawah ini :</p>
+                        <table style="width: 100%; margin-bottom: 25px;">
+                            <tr><td style="width: 30%; height: 26px;">Nama</td><td style="width: 3%;">:</td><td style="font-weight: bold; text-transform: uppercase;">${item.nama_utama}</td></tr>
+                            <tr><td style="height: 26px;">Tempat/Tanggal Lahir</td><td>:</td><td>${dk.ttl || "..........................."}</td></tr>
+                            <tr><td style="height: 26px;">No. Paspor</td><td>:</td><td><b>${dk.no_paspor || "..........................."}</b></td></tr>
+                            <tr><td style="height: 26px;">Alamat</td><td>:</td><td>${dk.alamat || "..........................."}</td></tr>
+                        </table>
+                        
+                        <p style="text-align: justify; margin-bottom: 15px;">
+                            Bersama ini mohon bantuan Bapak Kepala Kantor Imigrasi Bekasi untuk menambah nama menjadi 3 (tiga) suku kata yaitu menjadi :
+                        </p>
+                        <div style="text-align: center; font-weight: bold; font-size: 13pt; margin: 15px 0;">
+                            "${dk.nm_nama_baru || "..........................."}"
+                        </div>
+                        <p style="text-align: justify; margin-bottom: 15px;">
+                            Yang nama tersebut diambil dari Nama ${s} saya.
+                        </p>
+                        <p style="text-align: justify; margin-bottom: 20px;">
+                            Adapun permohonan penambahan nama tersebut saya ajukan untuk keperluan ibadah umroh.
+                        </p>
+                        <p style="text-align: justify; margin-bottom: 15px;">
+                            Demikian Pernyataan ini saya buat dengan sebenar - benarnya apabila di kemudian hari terdapat kekeliruan, saya bertanggung jawab sepenuhnya.
+                        </p>
+                        <p style="margin-top: 15px;">Atas perhatian / perkenaan Bapak, saya ucapkan terimakasih.</p>
+                `;
+            } else if (item.jenis_surat === "orangtua") {
+                formContent = `
+                    <div style="padding: 15mm; font-size: 11pt; line-height: 1.4; font-family: 'Times New Roman', Times, serif;">
+                        <div style="text-align: right; font-size: 8.5pt; line-height: 1.25; margin-bottom: 20px; font-family: sans-serif;">
+                            Lampiran 1<br>
+                            Surat Edaran Direktur Jendral Imigrasi<br>
+                            Nomor: IMI.1232.IZ.03.01 Tahun 2009<br>
+                            Tanggal: 28 September 2009
+                        </div>
+                        <h3 style="text-align: center; font-size: 13pt; font-weight: bold; text-decoration: underline; margin-bottom: 20px;">SURAT PERNYATAAN ORANG TUA</h3>
+                        
+                        <p style="margin-bottom: 10px;">Yang bertanda tangan di bawah ini saya :</p>
+                        <table style="width: 100%; margin-bottom: 15px;">
+                            <tr><td style="width: 30%; height: 24px;">Nama</td><td style="width: 3%;">:</td><td><b>${item.nama_utama}</b> &nbsp;&nbsp;&nbsp;&nbsp; (${dk.ot_jk || "L/P"})</td></tr>
+                            <tr><td style="height: 24px;">Tempat/tanggal lahir</td><td>:</td><td>${dk.ot_ttl || "..........................."}</td></tr>
+                            <tr><td style="height: 24px;">Alamat</td><td>:</td><td>${dk.ot_alamat || "..........................."}</td></tr>
+                            <tr><td style="height: 24px;">Pekerjaan</td><td>:</td><td>${dk.ot_pekerjaan || "..........................."}</td></tr>
+                            <tr><td style="height: 24px;">Pendidikan</td><td>:</td><td>${dk.ot_pendidikan || "..........................."}</td></tr>
+                            <tr><td style="height: 24px;">Pemegang KTP Nomor</td><td>:</td><td><b>${dk.ot_ktp || "..........................."}</b></td></tr>
+                            <tr><td style="height: 24px;">Tanggal diberikan</td><td>:</td><td>${dk.ot_ktp_tanggal || "..........................."} &nbsp;&nbsp; Berlaku s/d : ${dk.ot_ktp_expiry || "..........................."}</td></tr>
+                        </table>
+
+                        <p style="text-align: justify; margin-bottom: 10px;">
+                            Selaku Bapak/Ibu*), menyatakan bahwa semua persyaratan yang diajukan dalam rangka permohonan Paspor RI untuk dan atas nama anak saya dengan Identitas sebagai berikut:
+                        </p>
+
+                        <table style="width: 100%; margin-bottom: 15px; margin-left: 10px;">
+                            <tr><td style="width: 30%; height: 24px;">Nama</td><td style="width: 3%;">:</td><td style="font-weight: bold; text-transform: uppercase;">${dk.anak_nama || "..........................."}</td></tr>
+                            <tr><td style="height: 24px;">Tempat/tanggal lahir</td><td>:</td><td>${dk.anak_ttl || "..........................."}</td></tr>
+                            <tr><td style="height: 24px;">Alamat</td><td>:</td><td>${dk.anak_alamat || "..........................."}</td></tr>
+                            <tr><td style="height: 24px;">Pekerjaan / Pendidikan</td><td>:</td><td>${dk.anak_pendidikan || "..........................."}</td></tr>
+                            <tr><td style="height: 24px;">Pemegang NIK / KIA Nomor</td><td>:</td><td>${dk.anak_ktp || "..........................."}</td></tr>
+                        </table>
+
+                        <p style="text-align: justify; margin-bottom: 10px;">
+                            Adalah benar, sah dan tidak palsu atau dipalsukan serta dengan ini saya menyatakan tidak berkeberatan terhadap anak saya untuk bepergian keluar negeri dalam rangka <b>${dk.anak_tujuan || "..........................."}</b> yaitu ke Negara <b>${dk.anak_negara || "..........................."}</b>, bahwa keberangkatan anak saya tersebut sepenuhnya menjadi tanggungan <b>${dk.anak_tanggungan || "..........................."}</b>.
+                        </p>
+                        <p style="text-align: justify; margin-top: 10px;">
+                            Demikian pernyataan ini dibuat dengan sebenarnya dengan penuh kesadaran tanpa paksa dalam bentuk atau cara apapun serta dari siapapun juga dan apabila ternyata di kemudian hari pernyataan saya tidak benar, saya bersedia dituntut sesuai peraturan yang berlaku.
+                        </p>
+                `;
+            }
+
+            const signatureArea = `
+                <div style="margin-top: 30px; display: flex; justify-content: space-between; font-size: 11pt; font-family: 'Times New Roman', Times, serif;">
+                    <div style="width: 45%; text-align: left; padding-top: 50px; font-size: 9pt; color: #333;">
+                        *)NB: Wajib menggunakan pena tinta hitam untuk mengisi
+                    </div>
+                    <div style="width: 45%; text-align: center;">
+                        <p style="margin-bottom: 5px;">Bekasi, ${tgl}</p>
+                        <p style="margin-bottom: 5px;">Yang Menyatakan,</p>
+                        
+                        <!-- Overlay Tanda Tangan Diatas Materai Resmi -->
+                        <div style="position: relative; width: 150px; height: 80px; margin: 10px auto;">
+                            <!-- Kotak Materai 10rb -->
+                            <div style="position: absolute; left: 10px; top: 10px; width: 65px; height: 60px; border: 1.5px dashed #777; display: flex; align-items: center; justify-content: center; font-size: 8pt; color: #444; font-family: sans-serif; text-align: center; line-height: 1.2;">
+                                Materai<br>Rp. 10.000,-
+                            </div>
+                            <!-- Coretan Tinta Tanda Tangan Digital -->
+                            <img src="${item.tanda_tangan_base64 || item.tanda_tangan || ""}" style="position: absolute; left: 0; top: 0; width: 150px; height: 80px; object-fit: contain; z-index: 10;" />
+                        </div>
+                        <p style="font-weight: bold; text-decoration: underline; margin-top: 5px; text-transform: uppercase;">( ${item.nama_utama} )</p>
+                    </div>
+                </div>
+                </div>
+            `;
+
+            // Suntikkan dan hancurkan DOM sementera saat pemanggilan print
+            area.innerHTML = formContent + signatureArea;
+
+            // ISOLASI TOTAL: Matikan visual utama, paksa Cetak hanya render print-area
+            document.getElementById("main-app").style.display = "none";
+            area.style.display = "block";
+
+            // Jalankan Dialog Cetak Browser
+            setTimeout(async () => {
+                window.print();
+                
+                // Restorasi Tampilan Aplikasi Utama
+                document.getElementById("main-app").style.display = "flex";
+                area.style.display = "none";
+                area.innerHTML = "";
+
+                // =========================================================================
+                // AUTO-DELETE PRIVACY PROTECTOR (DATA LANGSUNG DIHAPUS SETELAH CETAK)
+                // =========================================================================
+                try {
+                    if (useLocalFallback) {
+                        localDatabase = localDatabase.filter(x => x.id !== id);
+                        localStorage.setItem('local_surat_pernyataan_db', JSON.stringify(localDatabase));
+                        triggerLocalListeners();
+                    } else {
+                        const itemRef = ref(dbInstance, 'surat_pernyataan/' + id);
+                        await set(itemRef, null); // Perintah hapus permanen di Firebase
+                    }
+                    window.showModal("Cetak & Lindungi Privasi", "Berkas berhasil dikirim ke printer. Data pemohon telah DIHAPUS secara otomatis dan permanen dari database demi menjaga privasi.");
+                } catch (err) {
+                    console.error("Gagal menghapus data privasi pemohon:", err);
+                }
+
+            }, 500);
+        };
+
+        // Mulai Alur Init Jaringan
+        initAuth();
+        lucide.createIcons();
+    </script>
+</body>
+</html>
